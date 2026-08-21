@@ -75,70 +75,63 @@ def obter_caminho_imagem(codigo_minassal):
 
 # --- 5. INTERFACE PRINCIPAL ---
 st.markdown("<h2 style='text-align: center; color: #1A202C;'>📱 Consulta em Campo</h2>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 13px; color: #718096;'>Digite o código completo ou <b>apenas os últimos dígitos</b> do EAN / SKU:</p>", unsafe_allow_html=True)
 
-# Abas para alternar entre Digitação/EAN e Câmera de Foto
-aba1, aba2 = st.tabs(["🔍 Digitar / EAN", "📸 Câmera (Tirar Foto)"])
+codigo_busca = st.text_input("🔍 Buscar Produto:", placeholder="Ex: 01275 ou 99176...")
 
-codigo_busca = ""
-
-with aba1:
-    st.markdown("<p style='font-size: 13px; color: #718096;'>Digite o código Minassal, SKU ou EAN do produto:</p>", unsafe_allow_html=True)
-    input_texto = st.text_input("Código ou EAN:", placeholder="Ex: 99176...", label_visibility="collapsed")
-    if input_texto:
-        codigo_busca = input_texto
-
-with aba2:
-    st.markdown("<p style='font-size: 13px; color: #718096;'>Se a embalagem estiver difícil de focar, tire uma foto para conferir o produto visualmente ou verifique o número impresso:</p>", unsafe_allow_html=True)
-    foto_enviada = st.camera_input("Tirar foto do produto/etiqueta")
-    if foto_enviada:
-        st.success("📸 Foto capturada com sucesso! Use a aba de digitação se preferir buscar pelo código visualizado na embalagem.")
-
-# --- 6. PROCESSAR A BUSCA E EXIBIR O PRODUTO ---
+# --- 6. PROCESSAR A BUSCA INTELIGENTE ---
 if codigo_busca:
     busca = str(codigo_busca).strip().replace('.0', '')
     
     if df_produtos is not None:
+        # Busca exata ou por terminação (últimos dígitos do EAN/SKU/Código)
         df_match = df_produtos[
+            (df_produtos['COD. EAN'].astype(str).str.strip().str.endswith(busca)) |
+            (df_produtos['SKU'].astype(str).str.strip().str.endswith(busca)) |
+            (df_produtos['CODIGO'].astype(str).str.strip().str.endswith(busca)) |
             (df_produtos['COD. EAN'].astype(str).str.strip() == busca) |
             (df_produtos['SKU'].astype(str).str.strip() == busca) |
             (df_produtos['CODIGO'].astype(str).str.strip() == busca)
         ]
 
         if not df_match.empty:
-            row = df_match.iloc[0]
-            
-            nome_comercial = row.get('NOME COMERCIAL', row.get('DESCRICAO', 'Produto'))
-            ean_val = str(row.get('COD. EAN', 'N/D')).replace('.0', '')
-            cod_minassal = str(row.get('CODIGO', 'N/D')).replace('.0', '')
-            familia_val = str(row.get('FAMILIA', 'Geral'))
-            
-            preco_mg = row.get('VALOR_RECOMENDADO_MG', 0.0)
-            caminho_img = obter_caminho_imagem(cod_minassal)
+            # Se encontrar mais de um produto com os mesmos dígitos finais, mostra todos para o promotor escolher
+            if len(df_match) > 1:
+                st.info(f"ℹ️ Encontramos {len(df_match)} produtos correspondentes. Selecione abaixo:")
+                
+            for index, row in df_match.iterrows():
+                nome_comercial = row.get('NOME COMERCIAL', row.get('DESCRICAO', 'Produto'))
+                ean_val = str(row.get('COD. EAN', 'N/D')).replace('.0', '')
+                cod_minassal = str(row.get('CODIGO', 'N/D')).replace('.0', '')
+                familia_val = str(row.get('FAMILIA', 'Geral'))
+                preco_mg = row.get('VALOR_RECOMENDADO_MG', 0.0)
+                caminho_img = obter_caminho_imagem(cod_minassal)
 
-            with st.container():
-                st.markdown("<div class='produto-card'>", unsafe_allow_html=True)
-                
-                if caminho_img and os.path.exists(caminho_img):
-                    st.image(caminho_img, use_container_width=True)
-                else:
-                    st.info("🖼️ Imagem não encontrada na pasta para este código.")
-                
-                st.markdown(f"<h3 style='text-align: center; color: #1A202C; margin-top: 10px;'>{nome_comercial}</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align: center; font-size: 13px; color: #718096;'><b>Família:</b> {familia_val} | <b>Cód:</b> {cod_minassal} | <b>EAN:</b> {ean_val}</p>", unsafe_allow_html=True)
-                
-                if pd.notna(preco_mg) and preco_mg > 0:
-                    st.markdown(
-                        f"""
-                        <div class="caixa-preco-central">
-                            <div class="titulo-preco">💰 Preço Sugerido de Ponta (MG)</div>
-                            <div class="valor-preco">R$ {preco_mg:,.2f}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.warning("⚠️ Preço sugerido não disponível para este item.")
-                
-                st.markdown("</div>", unsafe_allow_html=True)
+                with st.container():
+                    st.markdown("<div class='produto-card'>", unsafe_allow_html=True)
+                    
+                    if caminho_img and os.path.exists(caminho_img):
+                        st.image(caminho_img, use_container_width=True)
+                    else:
+                        st.info("🖼️ Imagem não encontrada na pasta para este código.")
+                    
+                    st.markdown(f"<h3 style='text-align: center; color: #1A202C; margin-top: 10px;'>{nome_comercial}</h3>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='text-align: center; font-size: 13px; color: #718096;'><b>Família:</b> {familia_val} | <b>Cód:</b> {cod_minassal} | <b>EAN:</b> {ean_val}</p>", unsafe_allow_html=True)
+                    
+                    if pd.notna(preco_mg) and preco_mg > 0:
+                        st.markdown(
+                            f"""
+                            <div class="caixa-preco-central">
+                                <div class="titulo-preco">💰 Preço Sugerido de Ponta (MG)</div>
+                                <div class="valor-preco">R$ {preco_mg:,.2f}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.warning("⚠️ Preço sugerido não disponível para este item.")
+                    
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown("<br>", unsafe_allow_html=True)
         else:
-            st.error(f"❌ Nenhum produto encontrado com o código **{busca}**.")
+            st.error(f"❌ Nenhum produto encontrado com o final ou código **{busca}**.")
