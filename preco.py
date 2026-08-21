@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 import os
-import streamlit.components.v1 as components
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA (Layout Mobile Centralizado) ---
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Consulta de Campo - Preço Sugerido",
     layout="centered",
@@ -14,7 +13,6 @@ st.set_page_config(
 st.markdown("""
 <style>
 .stApp { background-color: #F8F9FA; color: #2D3748; }
-[data-testid="stSidebar"] { border-right: 1px solid #E2E8F0; background-color: #FFFFFF; }
 .produto-card {
     background-color: #FFFFFF;
     border: 1px solid #CBD5E0;
@@ -77,58 +75,27 @@ def obter_caminho_imagem(codigo_minassal):
 
 # --- 5. INTERFACE PRINCIPAL ---
 st.markdown("<h2 style='text-align: center; color: #1A202C;'>📱 Consulta em Campo</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 14px; color: #718096;'>Aponte a câmera para o código de barras ou digite o código abaixo.</p>", unsafe_allow_html=True)
 
-# Componente HTML5 nativo para leitura de código de barras via Câmera do Celular
-barcode_component = components.html(
-    """
-    <div style="text-align: center; font-family: sans-serif;">
-        <button id="start-scan" style="background-color: #319795; color: white; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            📷 Abrir Câmera para Escanear
-        </button>
-        <div id="reader" style="width: 100%; max-width: 400px; margin: 15px auto;"></div>
-    </div>
-    
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script>
-        const button = document.getElementById('start-scan');
-        let html5QrCode;
-        
-        button.onclick = function() {
-            button.style.display = 'none';
-            html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-            
-            html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
-                // Quando ler o código de barras com sucesso, envia para o Streamlit via URL parameter
-                html5QrCode.stop().then(() => {
-                    const url = new URL(window.parent.location.href);
-                    url.searchParams.set('barcode', decodedText);
-                    window.parent.location.href = url.href;
-                }).catch((err) => {
-                    console.error("Erro ao parar a câmera", err);
-                });
-            }, (errorMessage) => {
-                // Erros de leitura quadro a quadro são ignorados para fluidez
-            }).catch((err) => {
-                alert("Erro ao acessar a câmera. Verifique as permissões do navegador.");
-                button.style.display = 'block';
-            });
-        };
-    </script>
-    """,
-    height=120
-)
+# Abas para alternar entre Digitação/EAN e Câmera de Foto
+aba1, aba2 = st.tabs(["🔍 Digitar / EAN", "📸 Câmera (Tirar Foto)"])
 
-# Captura o código vindo da câmera ou da digitação manual
-params = st.query_params
-codigo_camera = params.get("barcode", "")
+codigo_busca = ""
 
-# Input manual / Pistola Bluetooth (também recebe o código da câmera automaticamente)
-codigo_input = st.text_input("🔍 Código do Produto / EAN / SKU:", value=codigo_camera, placeholder="Digite, escaneie ou use a câmera...")
+with aba1:
+    st.markdown("<p style='font-size: 13px; color: #718096;'>Digite o código Minassal, SKU ou EAN do produto:</p>", unsafe_allow_html=True)
+    input_texto = st.text_input("Código ou EAN:", placeholder="Ex: 99176...", label_visibility="collapsed")
+    if input_texto:
+        codigo_busca = input_texto
 
-if codigo_input:
-    busca = str(codigo_input).strip().replace('.0', '')
+with aba2:
+    st.markdown("<p style='font-size: 13px; color: #718096;'>Se a embalagem estiver difícil de focar, tire uma foto para conferir o produto visualmente ou verifique o número impresso:</p>", unsafe_allow_html=True)
+    foto_enviada = st.camera_input("Tirar foto do produto/etiqueta")
+    if foto_enviada:
+        st.success("📸 Foto capturada com sucesso! Use a aba de digitação se preferir buscar pelo código visualizado na embalagem.")
+
+# --- 6. PROCESSAR A BUSCA E EXIBIR O PRODUTO ---
+if codigo_busca:
+    busca = str(codigo_busca).strip().replace('.0', '')
     
     if df_produtos is not None:
         df_match = df_produtos[
@@ -151,17 +118,14 @@ if codigo_input:
             with st.container():
                 st.markdown("<div class='produto-card'>", unsafe_allow_html=True)
                 
-                # Imagem grande centralizada
                 if caminho_img and os.path.exists(caminho_img):
                     st.image(caminho_img, use_container_width=True)
                 else:
                     st.info("🖼️ Imagem não encontrada na pasta para este código.")
                 
-                # Nome do Produto em destaque centralizado
                 st.markdown(f"<h3 style='text-align: center; color: #1A202C; margin-top: 10px;'>{nome_comercial}</h3>", unsafe_allow_html=True)
                 st.markdown(f"<p style='text-align: center; font-size: 13px; color: #718096;'><b>Família:</b> {familia_val} | <b>Cód:</b> {cod_minassal} | <b>EAN:</b> {ean_val}</p>", unsafe_allow_html=True)
                 
-                # Bloco de Preço Gigante, Preto e Centralizado
                 if pd.notna(preco_mg) and preco_mg > 0:
                     st.markdown(
                         f"""
