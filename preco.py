@@ -9,7 +9,7 @@ st.set_page_config(
     page_icon="📱"
 )
 
-# --- 2. ESTILO VISUAL ---
+# --- 2. ESTILO VISUAL E FORÇAR TECLADO NUMÉRICO ---
 st.markdown("""
 <style>
 .stApp { background-color: #F8F9FA; color: #2D3748; }
@@ -45,6 +45,22 @@ st.markdown("""
     line-height: 1.1;
 }
 </style>
+""", unsafe_allow_html=True)
+
+# Forçar o teclado numérico via JavaScript injetado
+st.markdown("""
+<script>
+    window.onload = function() {
+        const observer = new MutationObserver(() => {
+            const inputs = window.parent.document.querySelectorAll("input[type='text']");
+            inputs.forEach(input => {
+                input.setAttribute("inputmode", "numeric");
+                input.setAttribute("pattern", "[0-9]*");
+            });
+        });
+        observer.observe(window.parent.document.body, { childList: true, subtree: true });
+    };
+</script>
 """, unsafe_allow_html=True)
 
 # --- 3. CARREGAR A BASE UNIFICADA ---
@@ -84,7 +100,7 @@ if codigo_busca:
     busca = str(codigo_busca).strip().replace('.0', '')
     
     if df_produtos is not None:
-        # Busca exata ou por terminação (últimos dígitos do EAN/SKU/Código)
+        # Busca exata ou por terminação
         df_match = df_produtos[
             (df_produtos['COD. EAN'].astype(str).str.strip().str.endswith(busca)) |
             (df_produtos['SKU'].astype(str).str.strip().str.endswith(busca)) |
@@ -95,9 +111,8 @@ if codigo_busca:
         ]
 
         if not df_match.empty:
-            # Se encontrar mais de um produto com os mesmos dígitos finais, mostra todos para o promotor escolher
             if len(df_match) > 1:
-                st.info(f"ℹ️ Encontramos {len(df_match)} produtos correspondentes. Selecione abaixo:")
+                st.info(f"ℹ️ Encontramos {len(df_match)} produtos. Escolha o correto:")
                 
             for index, row in df_match.iterrows():
                 nome_comercial = row.get('NOME COMERCIAL', row.get('DESCRICAO', 'Produto'))
@@ -109,29 +124,23 @@ if codigo_busca:
 
                 with st.container():
                     st.markdown("<div class='produto-card'>", unsafe_allow_html=True)
-                    
                     if caminho_img and os.path.exists(caminho_img):
                         st.image(caminho_img, use_container_width=True)
                     else:
-                        st.info("🖼️ Imagem não encontrada na pasta para este código.")
+                        st.info("🖼️ Imagem não encontrada para este código.")
                     
                     st.markdown(f"<h3 style='text-align: center; color: #1A202C; margin-top: 10px;'>{nome_comercial}</h3>", unsafe_allow_html=True)
                     st.markdown(f"<p style='text-align: center; font-size: 13px; color: #718096;'><b>Família:</b> {familia_val} | <b>Cód:</b> {cod_minassal} | <b>EAN:</b> {ean_val}</p>", unsafe_allow_html=True)
                     
                     if pd.notna(preco_mg) and preco_mg > 0:
-                        st.markdown(
-                            f"""
+                        st.markdown(f"""
                             <div class="caixa-preco-central">
                                 <div class="titulo-preco">💰 Preço Sugerido de Ponta (MG)</div>
                                 <div class="valor-preco">R$ {preco_mg:,.2f}</div>
                             </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
+                        """, unsafe_allow_html=True)
                     else:
-                        st.warning("⚠️ Preço sugerido não disponível para este item.")
-                    
+                        st.warning("⚠️ Preço não disponível.")
                     st.markdown("</div>", unsafe_allow_html=True)
-                    st.markdown("<br>", unsafe_allow_html=True)
         else:
-            st.error(f"❌ Nenhum produto encontrado com o final ou código **{busca}**.")
+            st.error(f"❌ Produto não encontrado com final **{busca}**.")
