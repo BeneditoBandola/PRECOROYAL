@@ -22,17 +22,17 @@ st.markdown("""
     border: 1px solid #E2E8F0;
     border-top: 4px solid #E2001A;
     border-radius: 16px;
-    padding: 22px 18px;
+    padding: 24px 20px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
     text-align: center;
-    margin-top: 10px;
+    margin-top: 15px;
     margin-bottom: 25px;
 }
 .caixa-preco-central {
     background: #F8FAFC;
     border: 1.5px solid #CBD5E1;
     border-top: 3.5px solid #E2001A;
-    padding: 15px;
+    padding: 16px;
     border-radius: 12px;
     margin-top: 16px;
     text-align: center;
@@ -60,16 +60,16 @@ st.markdown("""
     border-radius: 14px;
     font-size: 12px;
     font-weight: 700;
-    margin-top: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 div[data-testid="stImage"] {
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-bottom: 15px;
 }
 div[data-testid="stImage"] img {
-    max-height: 290px !important;
+    max-height: 280px !important;
     object-fit: contain !important;
 }
 </style>
@@ -196,39 +196,31 @@ elif codigo_busca:
             
             caminho_img = obter_caminho_imagem(cod_minassal) or obter_caminho_imagem(sku_val)
 
-            # Centralização da imagem em tamanho expandido
-            col_esq, col_centro, col_dir = st.columns([1, 2.5, 1])
+            # Centralização da imagem em tamanho grande
+            col_esq, col_centro, col_dir = st.columns([1, 2.8, 1])
             with col_centro:
                 if caminho_img and os.path.exists(caminho_img):
                     st.image(caminho_img, use_container_width=True)
                 else:
-                    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 13px; margin: 25px 0;'>🖼️ Imagem não disponível</p>", unsafe_allow_html=True)
+                    st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 13px; margin: 20px 0;'>🖼️ Imagem não disponível</p>", unsafe_allow_html=True)
             
-            # Detalhes e Bloco de Preço Unificado
+            # Formatação dos identificadores
             detalhes_str = f"<b>Cód:</b> {cod_minassal}"
             if sku_val and sku_val != "N/D":
                 detalhes_str += f" | <b>SKU:</b> {sku_val}"
             if ean_val and ean_val != "N/D":
                 detalhes_str += f" | <b>EAN:</b> {ean_val}"
                 
+            # Bloco de preço formatado em linha única (sem recuos)
             if preco_mg > 0:
                 preco_formatado = f"R$ {preco_mg:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-                bloco_preco = f"""
-                    <div class="caixa-preco-central">
-                        <div class="titulo-preco">💰 Preço Sugerido de Ponta (MG)</div>
-                        <div class="valor-preco">{preco_formatado}</div>
-                    </div>
-                """
+                bloco_preco = f'<div class="caixa-preco-central"><div class="titulo-preco">💰 Preço Sugerido de Ponta (MG)</div><div class="valor-preco">{preco_formatado}</div></div>'
             else:
-                bloco_preco = "<div style='margin-top: 12px;'><span style='color: #D97706; font-size: 13px; font-weight: 700;'>⚠️ Preço sugerido não cadastrado</span></div>"
+                bloco_preco = '<div style="margin-top: 12px;"><span style="color: #D97706; font-size: 13px; font-weight: 700;">⚠️ Preço sugerido não cadastrado</span></div>'
 
-            st.markdown(f"""
-                <div class="caixa-produto-info">
-                    <span class="badge-familia">{familia_val}</span>
-                    <h3 style="color: #0F172A; margin-top: 6px; margin-bottom: 8px; font-size: 19px;">{nome_comercial}</h3>
-                    <p style="font-size: 12.5px; color: #64748B; margin-bottom: 0;">{detalhes_str}</p>
-                    {bloco_preco}
-                </div>
-            """, unsafe_allow_html=True)
+            # Renderização do Card Unificado
+            html_card = f'<div class="caixa-produto-info"><span class="badge-familia">{familia_val}</span><h3 style="color: #0F172A; margin-top: 4px; margin-bottom: 6px; font-size: 19px;">{nome_comercial}</h3><p style="font-size: 12.5px; color: #64748B; margin-bottom: 0;">{detalhes_str}</p>{bloco_preco}</div>'
+
+            st.markdown(html_card, unsafe_allow_html=True)
     else:
         st.error(f"❌ Nenhum produto encontrado para: **{codigo_busca}**.")
