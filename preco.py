@@ -10,41 +10,72 @@ st.set_page_config(
     page_icon="📱"
 )
 
-# --- 2. ESTILO VISUAL ---
+# --- 2. ESTILO VISUAL E PADRONIZAÇÃO DE IMAGENS ---
 st.markdown("""
 <style>
-.stApp { background-color: #F8F9FA; color: #2D3748; }
+.stApp { 
+    background-color: #F1F5F9; 
+    color: #1E293B; 
+}
 .produto-card {
     background-color: #FFFFFF;
-    border: 1px solid #CBD5E0;
-    border-radius: 20px;
+    border: 1px solid #E2E8F0;
+    border-top: 4px solid #E2001A;
+    border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
     text-align: center;
     margin-top: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
+}
+.container-imagem {
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    background-color: #FAFAFA;
+    border-radius: 10px;
+    padding: 8px;
+}
+.container-imagem img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
 }
 .caixa-preco-central {
-    background: #E2E8F0;
-    border: 2px solid #CBD5E0;
-    padding: 16px;
-    border-radius: 16px;
-    margin-top: 15px;
+    background: #F8FAFC;
+    border: 1.5px solid #CBD5E1;
+    border-top: 3px solid #E2001A;
+    padding: 14px;
+    border-radius: 12px;
+    margin-top: 14px;
     text-align: center;
 }
 .titulo-preco {
-    color: #4A5568;
-    font-size: 13px;
+    color: #475569;
+    font-size: 11.5px;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
 }
 .valor-preco {
     color: #047857;
-    font-size: 42px;
+    font-size: 38px;
     font-weight: 900;
-    margin-top: 5px;
+    margin-top: 2px;
     line-height: 1.1;
+    font-family: monospace, sans-serif;
+}
+.badge-familia {
+    display: inline-block;
+    background-color: #E2E8F0;
+    color: #334155;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11.5px;
+    font-weight: 700;
+    margin-bottom: 6px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -56,19 +87,40 @@ def normalizar_texto(texto):
     nfkd = unicodedata.normalize('NFKD', str(texto))
     return "".join([c for c in nfkd if not unicodedata.combining(c)]).lower().strip()
 
+def limpar_campo_codigo(val):
+    if pd.isna(val):
+        return ""
+    txt = str(val).strip()
+    if txt.endswith('.0'):
+        txt = txt[:-2]
+    return txt
+
 @st.cache_data
 def carregar_dados():
     arquivo_base = "boneco_com_valor_h.xlsx"
     if not os.path.exists(arquivo_base):
         return None
-    df = pd.read_excel(arquivo_base, sheet_name='Detalhado')
+    try:
+        df = pd.read_excel(arquivo_base, sheet_name='Detalhado')
+    except Exception:
+        try:
+            df = pd.read_excel(arquivo_base)
+        except Exception as e:
+            st.error(f"Erro ao abrir a planilha: {e}")
+            return None
+
     df.columns = [str(c).strip().upper() for c in df.columns]
     
-    # Campo unificado para busca em texto ultra rápida
+    for col in ['CODIGO', 'COD. EAN', 'SKU']:
+        if col in df.columns:
+            df[f"{col}_LIMPO"] = df[col].apply(limpar_campo_codigo)
+        else:
+            df[f"{col}_LIMPO"] = ""
+
     df['BUSCA_COMPLETA'] = df.apply(
         lambda r: normalizar_texto(
             f"{r.get('DESCRICAO', '')} {r.get('NOME COMERCIAL', '')} {r.get('FAMILIA', '')} "
-            f"{r.get('CODIGO', '')} {r.get('COD. EAN', '')} {r.get('SKU', '')}"
+            f"{r.get('CODIGO_LIMPO', '')} {r.get('COD. EAN_LIMPO', '')} {r.get('SKU_LIMPO', '')}"
         ),
         axis=1
     )
@@ -79,11 +131,11 @@ df_produtos = carregar_dados()
 # --- 4. FUNÇÃO DE BUSCA DA IMAGEM ---
 PASTA_FOTOS = "mockups_produtos"
 
-def obter_caminho_imagem(codigo_minassal):
+def obter_caminho_imagem(codigo_identificador):
     extensoes = ['.png', '.jpg', '.jpeg', '.webp', '.PNG', '.JPG', '.JPEG']
-    cod_limpo = str(codigo_minassal).strip().replace('.0', '')
+    cod_limpo = str(codigo_identificador).strip().replace('.0', '')
     
-    if os.path.exists(PASTA_FOTOS):
+    if os.path.exists(PASTA_FOTOS) and cod_limpo:
         for ext in extensoes:
             caminho_completo = os.path.join(PASTA_FOTOS, f"{cod_limpo}{ext}")
             if os.path.exists(caminho_completo):
@@ -91,28 +143,28 @@ def obter_caminho_imagem(codigo_minassal):
     return None
 
 # --- 5. INTERFACE PRINCIPAL ---
-st.markdown("<h2 style='text-align: center; color: #1A202C;'>📱 Consulta em Campo</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size: 13px; color: #718096;'>Digite os <b>dígitos finais do código</b> ou o <b>nome / peso</b> do produto:</p>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center; color: #0F172A; margin-bottom: 2px;'>📱 Consulta em Campo</h2>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 13px; color: #64748B;'>Digite os <b>dígitos finais do código</b> ou o <b>nome / peso</b> do produto:</p>", unsafe_allow_html=True)
 
-codigo_busca = st.text_input("🔍 Buscar Produto:", placeholder="Ex: 214731, shih tzu 2.5, gastro feline, kitten...")
+codigo_busca = st.text_input("🔍 Buscar Produto:", placeholder="Ex: 214731, shih tzu 2.5, gastro feline, kitten...", label_visibility="collapsed")
 
 # --- 6. PROCESSAR A BUSCA INTELIGENTE HÍBRIDA ---
-if codigo_busca and df_produtos is not None:
+if df_produtos is None:
+    st.error("⚠️ Planilha `boneco_com_valor_h.xlsx` não encontrada no diretório raiz.")
+elif codigo_busca:
     busca_raw = str(codigo_busca).strip()
     busca_limpa = busca_raw.replace('.0', '').strip()
     
-    # Se for estritamente numérico, prioriza terminação de código (EAN, SKU, Código Minassal)
     if busca_limpa.isdigit():
         df_match = df_produtos[
-            (df_produtos['COD. EAN'].astype(str).str.strip().str.endswith(busca_limpa)) |
-            (df_produtos['SKU'].astype(str).str.strip().str.endswith(busca_limpa)) |
-            (df_produtos['CODIGO'].astype(str).str.strip().str.endswith(busca_limpa)) |
-            (df_produtos['COD. EAN'].astype(str).str.strip() == busca_limpa) |
-            (df_produtos['SKU'].astype(str).str.strip() == busca_limpa) |
-            (df_produtos['CODIGO'].astype(str).str.strip() == busca_limpa)
+            (df_produtos['COD. EAN_LIMPO'].str.endswith(busca_limpa)) |
+            (df_produtos['SKU_LIMPO'].str.endswith(busca_limpa)) |
+            (df_produtos['CODIGO_LIMPO'].str.endswith(busca_limpa)) |
+            (df_produtos['COD. EAN_LIMPO'] == busca_limpa) |
+            (df_produtos['SKU_LIMPO'] == busca_limpa) |
+            (df_produtos['CODIGO_LIMPO'] == busca_limpa)
         ]
     else:
-        # Busca textual multi-termos (todas as palavras digitadas precisam estar no produto)
         tokens = [normalizar_texto(t) for t in busca_raw.split() if t.strip()]
         
         def match_tokens(texto_registro):
@@ -128,30 +180,54 @@ if codigo_busca and df_produtos is not None:
 
         df_match = df_produtos[df_produtos['BUSCA_COMPLETA'].apply(match_tokens)]
 
-    # Exibição dos resultados
     if not df_match.empty:
         if len(df_match) > 1:
-            st.info(f"ℹ️ Encontramos **{len(df_match)} produtos**. Veja as opções abaixo:")
+            st.info(f"ℹ️ Encontrados **{len(df_match)} produtos** correspondentes:")
             
         for index, row in df_match.iterrows():
             nome_comercial = row.get('NOME COMERCIAL', row.get('DESCRICAO', 'Produto'))
-            ean_val = str(row.get('COD. EAN', 'N/D')).replace('.0', '')
-            cod_minassal = str(row.get('CODIGO', 'N/D')).replace('.0', '')
+            ean_val = row.get('COD. EAN_LIMPO', 'N/D')
+            cod_minassal = row.get('CODIGO_LIMPO', 'N/D')
+            sku_val = row.get('SKU_LIMPO', 'N/D')
             familia_val = str(row.get('FAMILIA', 'Geral'))
-            preco_mg = row.get('VALOR_RECOMENDADO_MG', 0.0)
-            caminho_img = obter_caminho_imagem(cod_minassal)
+            
+            preco_raw = row.get('VALOR_RECOMENDADO_MG', 0.0)
+            try:
+                if isinstance(preco_raw, str):
+                    preco_raw = preco_raw.replace('R$', '').replace('.', '').replace(',', '.').strip()
+                preco_mg = float(preco_raw)
+            except Exception:
+                preco_mg = 0.0
+            
+            caminho_img = obter_caminho_imagem(cod_minassal) or obter_caminho_imagem(sku_val)
 
             with st.container():
                 st.markdown("<div class='produto-card'>", unsafe_allow_html=True)
+                
+                # Exibição da imagem padronizada em container fixo
                 if caminho_img and os.path.exists(caminho_img):
-                    st.image(caminho_img, use_container_width=True)
+                    st.markdown(f"""
+                        <div class="container-imagem">
+                            <img src="data:image/png;base64,{pd.io.common.file_exists(caminho_img) and ''}" />
+                        </div>
+                    """, unsafe_allow_html=True)
+                    # Exibe direto via Streamlit com enquadramento proporcional
+                    st.image(caminho_img, width=200)
                 else:
-                    st.info("🖼️ Imagem não disponível.")
+                    st.markdown("<div class='container-imagem'><p style='color: #94A3B8; font-size: 13px;'>🖼️ Imagem não disponível</p></div>", unsafe_allow_html=True)
                 
-                st.markdown(f"<h3 style='text-align: center; color: #1A202C; margin-top: 10px;'>{nome_comercial}</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align: center; font-size: 13px; color: #718096;'><b>Família:</b> {familia_val} | <b>Cód:</b> {cod_minassal} | <b>EAN:</b> {ean_val}</p>", unsafe_allow_html=True)
+                st.markdown(f"<span class='badge-familia'>{familia_val}</span>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='text-align: center; color: #0F172A; margin-top: 4px; margin-bottom: 6px; font-size: 18px;'>{nome_comercial}</h3>", unsafe_allow_html=True)
                 
-                if pd.notna(preco_mg) and preco_mg > 0:
+                detalhes_str = f"<b>Cód:</b> {cod_minassal}"
+                if sku_val and sku_val != "N/D":
+                    detalhes_str += f" | <b>SKU:</b> {sku_val}"
+                if ean_val and ean_val != "N/D":
+                    detalhes_str += f" | <b>EAN:</b> {ean_val}"
+                    
+                st.markdown(f"<p style='text-align: center; font-size: 12.5px; color: #64748B;'>{detalhes_str}</p>", unsafe_allow_html=True)
+                
+                if preco_mg > 0:
                     preco_formatado = f"R$ {preco_mg:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
                     st.markdown(f"""
                         <div class="caixa-preco-central">
@@ -160,7 +236,8 @@ if codigo_busca and df_produtos is not None:
                         </div>
                     """, unsafe_allow_html=True)
                 else:
-                    st.warning("⚠️ Preço não disponível.")
+                    st.warning("⚠️ Preço sugerido não cadastrado para este item.")
+                    
                 st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.error(f"❌ Nenhum produto encontrado para: **{codigo_busca}**.")
