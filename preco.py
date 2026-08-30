@@ -10,7 +10,7 @@ st.set_page_config(
     page_icon="📱"
 )
 
-# --- 2. ESTILO VISUAL E PADRONIZAÇÃO DE IMAGENS ---
+# --- 2. ESTILO VISUAL, CORES E PADRONIZAÇÃO DE IMAGENS ---
 st.markdown("""
 <style>
 .stApp { 
@@ -28,20 +28,17 @@ st.markdown("""
     margin-top: 15px;
     margin-bottom: 22px;
 }
-.container-imagem {
-    height: 220px;
+/* Centraliza a imagem e força altura uniforme */
+div[data-testid="stImage"] {
     display: flex;
-    align-items: center;
     justify-content: center;
-    margin-bottom: 12px;
-    background-color: #FAFAFA;
-    border-radius: 10px;
-    padding: 8px;
+    align-items: center;
+    margin-bottom: 10px;
 }
-.container-imagem img {
-    max-height: 100%;
-    max-width: 100%;
-    object-fit: contain;
+div[data-testid="stImage"] img {
+    max-height: 220px !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
 }
 .caixa-preco-central {
     background: #F8FAFC;
@@ -111,12 +108,14 @@ def carregar_dados():
 
     df.columns = [str(c).strip().upper() for c in df.columns]
     
+    # Padroniza os campos para evitar erros com .0
     for col in ['CODIGO', 'COD. EAN', 'SKU']:
         if col in df.columns:
             df[f"{col}_LIMPO"] = df[col].apply(limpar_campo_codigo)
         else:
             df[f"{col}_LIMPO"] = ""
 
+    # Constrói o índice de busca textual rápida
     df['BUSCA_COMPLETA'] = df.apply(
         lambda r: normalizar_texto(
             f"{r.get('DESCRICAO', '')} {r.get('NOME COMERCIAL', '')} {r.get('FAMILIA', '')} "
@@ -155,6 +154,7 @@ elif codigo_busca:
     busca_raw = str(codigo_busca).strip()
     busca_limpa = busca_raw.replace('.0', '').strip()
     
+    # 1. Busca por código (final do código ou correspondência exata)
     if busca_limpa.isdigit():
         df_match = df_produtos[
             (df_produtos['COD. EAN_LIMPO'].str.endswith(busca_limpa)) |
@@ -165,6 +165,7 @@ elif codigo_busca:
             (df_produtos['CODIGO_LIMPO'] == busca_limpa)
         ]
     else:
+        # 2. Busca textual multi-termos
         tokens = [normalizar_texto(t) for t in busca_raw.split() if t.strip()]
         
         def match_tokens(texto_registro):
@@ -180,6 +181,7 @@ elif codigo_busca:
 
         df_match = df_produtos[df_produtos['BUSCA_COMPLETA'].apply(match_tokens)]
 
+    # 3. Exibição dos resultados
     if not df_match.empty:
         if len(df_match) > 1:
             st.info(f"ℹ️ Encontrados **{len(df_match)} produtos** correspondentes:")
@@ -191,6 +193,7 @@ elif codigo_busca:
             sku_val = row.get('SKU_LIMPO', 'N/D')
             familia_val = str(row.get('FAMILIA', 'Geral'))
             
+            # Tratamento numérico do preço
             preco_raw = row.get('VALOR_RECOMENDADO_MG', 0.0)
             try:
                 if isinstance(preco_raw, str):
@@ -204,21 +207,16 @@ elif codigo_busca:
             with st.container():
                 st.markdown("<div class='produto-card'>", unsafe_allow_html=True)
                 
-                # Exibição da imagem padronizada em container fixo
+                # Exibição direta e limpa da imagem sem tags duplicadas
                 if caminho_img and os.path.exists(caminho_img):
-                    st.markdown(f"""
-                        <div class="container-imagem">
-                            <img src="data:image/png;base64,{pd.io.common.file_exists(caminho_img) and ''}" />
-                        </div>
-                    """, unsafe_allow_html=True)
-                    # Exibe direto via Streamlit com enquadramento proporcional
-                    st.image(caminho_img, width=200)
+                    st.image(caminho_img, width=180)
                 else:
-                    st.markdown("<div class='container-imagem'><p style='color: #94A3B8; font-size: 13px;'>🖼️ Imagem não disponível</p></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height: 120px; display: flex; align-items: center; justify-content: center; background-color: #FAFAFA; border-radius: 10px; margin-bottom: 12px;'><p style='color: #94A3B8; font-size: 13px; margin: 0;'>🖼️ Imagem não disponível</p></div>", unsafe_allow_html=True)
                 
                 st.markdown(f"<span class='badge-familia'>{familia_val}</span>", unsafe_allow_html=True)
                 st.markdown(f"<h3 style='text-align: center; color: #0F172A; margin-top: 4px; margin-bottom: 6px; font-size: 18px;'>{nome_comercial}</h3>", unsafe_allow_html=True)
                 
+                # Exibição dos códigos de identificação
                 detalhes_str = f"<b>Cód:</b> {cod_minassal}"
                 if sku_val and sku_val != "N/D":
                     detalhes_str += f" | <b>SKU:</b> {sku_val}"
