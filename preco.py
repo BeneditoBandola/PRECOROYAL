@@ -12,11 +12,14 @@ st.set_page_config(
 
 # --- 2. CAPTURAR O ESTADO SELECIONADO ANTES DO CSS ---
 st.markdown(
-    "<h2 style='text-align: center; color: #0F172A; margin-bottom: 2px;'>📱 Consulta em Campo</h2>",
+    "<h2 style='text-align: center; color: #0F172A; margin-bottom: 2px;'>📱"
+    " Consulta em Campo</h2>",
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<p style='text-align: center; font-size: 13px; color: #64748B; margin-bottom: 10px;'>Selecione o estado de consulta e digite os <b>dígitos finais do código</b> ou o <b>nome / peso</b> do produto:</p>",
+    "<p style='text-align: center; font-size: 13px; color: #64748B;"
+    " margin-bottom: 10px;'>Selecione o estado de consulta e digite os"
+    " <b>dígitos finais do código</b> ou o <b>nome / peso</b> do produto:</p>",
     unsafe_allow_html=True,
 )
 
@@ -47,6 +50,20 @@ st.markdown(
     background-color: {bg_color}; 
     color: #1E293B; 
     transition: background-color 0.3s ease;
+}}
+/* Garante alta visibilidade e leitura perfeita nos botões de rádio dos estados */
+div[data-testid="stRadio"] label {{
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #CBD5E1 !important;
+    padding: 6px 18px !important;
+    border-radius: 8px !important;
+    font-weight: 800 !important;
+    color: #0F172A !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}}
+div[data-testid="stRadio"] div[role="radiogroup"] {{
+    gap: 12px;
+    justify-content: center;
 }}
 .caixa-estado-topo {{
     background-color: #FFFFFF;
