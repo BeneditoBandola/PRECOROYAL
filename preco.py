@@ -342,3 +342,6 @@ elif codigo_busca:
       st.markdown(html_card, unsafe_allow_html=True)
   else:
     st.error(f"❌ Nenhum produto encontrado para: **{codigo_busca}**.")
+
+# Assinatura de autoria na tela do programa (interface do Streamlit)
+st.markdown("<br><hr><p style='text-align: center; color: #555555; font-size: 11px;'>Desenvolvido por Benedito Bandola</p>", unsafe_allow_html=True)
